@@ -1,0 +1,58 @@
+name: Deploy da Esteira Profissional
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-e-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Montar pacote de distribuição (dist)
+        run: |
+          echo ">> Limpeza: apagando dist antiga"
+          rm -rf dist
+          echo ">> Criação: criando dist do zero"
+          mkdir dist
+          echo ">> Coleta: copiando arquivos .html"
+          cp *.html dist/
+          echo ">> Assets: copiando pasta assets/"
+          cp -r assets dist/
+          echo ">> Logs: conteúdo da dist"
+          ls -R dist
+
+      - name: Auditoria de Qualidade
+        run: |
+          for arquivo in index.html sobre.html contato.html; do
+            if test -f "dist/$arquivo"; then
+              echo "OK: dist/$arquivo encontrado"
+            else
+              echo "ERRO: dist/$arquivo NÃO foi encontrado!"
+              exit 1
+            fi
+          done
+          echo "Auditoria aprovada."
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar artefato (somente a dist)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
